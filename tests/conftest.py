@@ -23,6 +23,7 @@ BASE_URL = "https://www.saucedemo.com"
 VALID_USER = "standard_user"
 VALID_PASS = "secret_sauce"
 SCREENSHOT_DIR = PROJECT_ROOT / "reports" / "screenshots"
+CAPTURE_SCREENSHOT_ON_PASS = True
 
 
 @pytest.fixture(scope="function")
@@ -68,7 +69,10 @@ def pytest_runtest_makereport(item, call):
     outcome = yield
     report = outcome.get_result()
 
-    if report.when != "call" or report.passed:
+    if report.when != "call":
+        return
+
+    if report.passed and not CAPTURE_SCREENSHOT_ON_PASS:
         return
 
     drv = item.funcargs.get("driver") or item.funcargs.get("logged_in_driver")
@@ -78,5 +82,6 @@ def pytest_runtest_makereport(item, call):
     SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     test_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", item.nodeid)
-    screenshot_path = SCREENSHOT_DIR / f"{test_name}_{timestamp}.png"
+    result = "PASSED" if report.passed else "FAILED"
+    screenshot_path = SCREENSHOT_DIR / f"{test_name}_{result}_{timestamp}.png"
     drv.save_screenshot(str(screenshot_path))
